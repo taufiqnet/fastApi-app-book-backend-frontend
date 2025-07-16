@@ -12,119 +12,180 @@ export default function BookAppointment() {
   const [notes, setNotes] = useState("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Format time for display (10:00 → 10:00 AM)
+  const formatTimeDisplay = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours, 10);
+    return `${hour > 12 ? hour - 12 : hour}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
+  };
+
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    console.log("Retrieved token:", token);
     if (!token) {
       setError("Authentication token not found. Please login again.");
       return;
     }
 
-    axios
-      .get("http://localhost:8000/api/v1/users/users/doctors", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setDoctors(res.data))
-      .catch((error) => {
+    const fetchDoctors = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:8000/api/v1/users/users/doctors",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setDoctors(response.data);
+      } catch (error) {
         console.error("Failed to load doctors:", error);
-        setError("Failed to load doctors");
-      });
+        setError("Failed to load doctors. Please try again later.");
+      }
+    };
+
+    fetchDoctors();
   }, []);
 
-  // ✅ Update timeslots on doctor change
+  // Update timeslots when doctor changes
   useEffect(() => {
+    if (!doctorId) {
+      setAvailableSlots([]);
+      return;
+    }
+
     const selectedDoctor = doctors.find((d) => d.id == doctorId);
     if (selectedDoctor?.available_timeslots) {
-      setAvailableSlots(selectedDoctor.available_timeslots.split(","));
+      setAvailableSlots(
+        selectedDoctor.available_timeslots.split(",")
+          .filter(slot => slot.trim()) // Remove empty slots
+          .map(slot => slot.trim()) // Clean whitespace
+      );
     } else {
       setAvailableSlots([]);
     }
   }, [doctorId, doctors]);
 
-  // ✅ Submit appointment
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
     if (!doctorId || !appointmentTime || !notes) {
       setError("All fields are required");
+      setIsSubmitting(false);
       return;
     }
 
     try {
-      const today = new Date().toISOString().split("T")[0]; // e.g. 2025-07-16
-      const fullDateTime = `${today}T${appointmentTime}`;
+      const today = getTodayDate();
+      const fullDateTime = `${today}T${appointmentTime}:00`; // Add seconds
+
+      console.log("Submitting appointment:", {
+        doctor_id: doctorId,
+        appointment_time: fullDateTime,
+        notes
+      });
+
       const token = localStorage.getItem("token");
+      if (!token) throw new Error("Authentication token not found");
 
       await axios.post(
-        "http://localhost:8000/api/v1/appointments",
+        "http://localhost:8000/api/v1/appointment/appointments",
         {
           doctor_id: parseInt(doctorId),
           appointment_time: fullDateTime,
           notes,
         },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
-      alert("✅ Appointment booked successfully");
+      alert("Appointment booked successfully!");
       router.push("/patient/profile");
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || "Booking failed";
-      setError(msg);
+      console.error("Booking error:", err);
+      const errorMessage = err.response?.data?.detail || 
+                          err.message || 
+                          "Failed to book appointment";
+      setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto mt-10">
-      <h1 className="text-2xl font-bold mb-6">📅 Book Appointment</h1>
+    <div className="max-w-xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6 text-center">Book Appointment</h1>
 
       {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>
+        <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
+          {error}
+        </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <select
-          className="w-full border p-2 rounded"
-          value={doctorId}
-          onChange={(e) => setDoctorId(e.target.value)}
-        >
-          <option value="">Select Doctor</option>
-          {doctors.map((doctor) => (
-            <option key={doctor.id} value={doctor.id}>
-              {doctor.full_name} (৳{doctor.consultation_fee})
-            </option>
-          ))}
-        </select>
+        <div>
+          <label className="block mb-1 font-medium">Doctor</label>
+          <select
+            className="w-full border p-2 rounded"
+            value={doctorId}
+            onChange={(e) => setDoctorId(e.target.value)}
+            required
+          >
+            <option value="">Select Doctor</option>
+            {doctors.map((doctor) => (
+              <option key={doctor.id} value={doctor.id}>
+                {doctor.full_name} (৳{doctor.consultation_fee})
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <select
-          className="w-full border p-2 rounded"
-          value={appointmentTime}
-          onChange={(e) => setAppointmentTime(e.target.value)}
-          disabled={!availableSlots.length}
-        >
-          <option value="">Select Time Slot</option>
-          {availableSlots.map((slot, idx) => (
-            <option key={idx} value={slot}>{slot}</option>
-          ))}
-        </select>
+        <div>
+          <label className="block mb-1 font-medium">Time Slot</label>
+          <select
+            className="w-full border p-2 rounded"
+            value={appointmentTime}
+            onChange={(e) => setAppointmentTime(e.target.value)}
+            disabled={!availableSlots.length}
+            required
+          >
+            <option value="">Select Time Slot</option>
+            {availableSlots.map((slot, idx) => (
+              <option key={idx} value={slot}>
+                {formatTimeDisplay(slot)}
+              </option>
+            ))}
+          </select>
+          {!availableSlots.length && doctorId && (
+            <p className="text-sm text-gray-500 mt-1">
+              No available slots for this doctor
+            </p>
+          )}
+        </div>
 
-        <textarea
-          className="w-full border p-2 rounded"
-          placeholder="Notes / Symptoms"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
+        <div>
+          <label className="block mb-1 font-medium">Notes/Symptoms</label>
+          <textarea
+            className="w-full border p-2 rounded"
+            placeholder="Describe your symptoms..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={4}
+            required
+          />
+        </div>
 
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
+          disabled={isSubmitting}
         >
-          Book Appointment
+          {isSubmitting ? "Booking..." : "Book Appointment"}
         </button>
       </form>
     </div>
