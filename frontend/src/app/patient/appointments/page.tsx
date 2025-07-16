@@ -15,17 +15,21 @@ export default function BookAppointment() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    console.log("Retrieved token:", token);
     if (!token) {
       setError("Authentication token not found. Please login again.");
       return;
     }
 
     axios
-      .get("http://localhost:8000/api/v1/users/doctors", {
+      .get("http://localhost:8000/api/v1/users/users/doctors", {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setDoctors(res.data))
-      .catch(() => setError("Failed to load doctors"));
+      .catch((error) => {
+        console.error("Failed to load doctors:", error);
+        setError("Failed to load doctors");
+      });
   }, []);
 
   // ✅ Update timeslots on doctor change
