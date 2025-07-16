@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -27,9 +28,7 @@ export default function BookAppointment() {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : "";
+  const { token } = useAuth();
 
   // ✅ Load doctors
   useEffect(() => {
@@ -54,7 +53,7 @@ export default function BookAppointment() {
     };
 
     fetchDoctors();
-  }, [token]);
+  }, []);
 
   // ✅ Update timeslots when doctor changes
   useEffect(() => {
@@ -82,6 +81,12 @@ export default function BookAppointment() {
     setError("");
     setIsSubmitting(true);
 
+    if (!token) {
+      setError("Authentication token not found. Please login again.");
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!doctorId || !appointmentDate || !appointmentTime || !notes) {
       setError("All fields are required.");
       setIsSubmitting(false);
@@ -89,7 +94,7 @@ export default function BookAppointment() {
     }
 
     try {
-      const fullDateTime = `${appointmentDate}T${appointmentTime}:00`;
+      const fullDateTime = `${appointmentDate}T${appointmentTime}`;
 
       await axios.post(
         "http://localhost:8000/api/v1/appointment/appointments", // ✅ CORRECT endpoint
