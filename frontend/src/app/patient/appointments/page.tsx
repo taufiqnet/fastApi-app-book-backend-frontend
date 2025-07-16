@@ -13,10 +13,13 @@ export default function BookAppointment() {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [error, setError] = useState("");
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
-
-  // ✅ Fetch doctors from backend
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Authentication token not found. Please login again.");
+      return;
+    }
+
     axios
       .get("http://localhost:8000/api/v1/users/doctors", {
         headers: { Authorization: `Bearer ${token}` },
@@ -48,6 +51,7 @@ export default function BookAppointment() {
     try {
       const today = new Date().toISOString().split("T")[0]; // e.g. 2025-07-16
       const fullDateTime = `${today}T${appointmentTime}`;
+      const token = localStorage.getItem("token");
 
       await axios.post(
         "http://localhost:8000/api/v1/appointments",
