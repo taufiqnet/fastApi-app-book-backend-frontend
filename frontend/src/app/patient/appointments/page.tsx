@@ -8,6 +8,7 @@ export default function BookAppointment() {
   const router = useRouter();
   const [doctors, setDoctors] = useState<any[]>([]);
   const [doctorId, setDoctorId] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState(getTodayDate());
   const [appointmentTime, setAppointmentTime] = useState("");
   const [notes, setNotes] = useState("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -73,20 +74,19 @@ export default function BookAppointment() {
     setError("");
     setIsSubmitting(true);
 
-    if (!doctorId || !appointmentTime || !notes) {
+    if (!doctorId || !appointmentDate || !appointmentTime || !notes) {
       setError("All fields are required");
       setIsSubmitting(false);
       return;
     }
 
     try {
-      const today = getTodayDate();
-      const fullDateTime = `${today}T${appointmentTime}:00`; // Add seconds
+      const fullDateTime = `${appointmentDate}T${appointmentTime}:00`;
 
       console.log("Submitting appointment:", {
         doctor_id: doctorId,
         appointment_time: fullDateTime,
-        notes
+        notes,
       });
 
       const token = localStorage.getItem("token");
@@ -108,9 +108,10 @@ export default function BookAppointment() {
       router.push("/patient/profile");
     } catch (err: any) {
       console.error("Booking error:", err);
-      const errorMessage = err.response?.data?.detail || 
-                          err.message || 
-                          "Failed to book appointment";
+      const errorMessage =
+        err.response?.data?.detail ||
+        err.message ||
+        "Failed to book appointment";
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -143,6 +144,18 @@ export default function BookAppointment() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block mb-1 font-medium">Appointment Date</label>
+          <input
+            type="date"
+            className="w-full border p-2 rounded"
+            value={appointmentDate}
+            min={getTodayDate()}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            required
+          />
         </div>
 
         <div>
