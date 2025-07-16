@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ReactNode } from "react";
-import { FiLogOut, FiUser } from "react-icons/fi";
+import { FiCalendar, FiHome, FiLogOut, FiUser } from "react-icons/fi";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -17,11 +17,18 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 bg-blue-900 text-white flex flex-col p-4 fixed h-full z-10">
         <div className="text-2xl font-bold mb-8">🏥 Dashboard</div>
-        <nav className="space-y-4">
-          <a href="/" className="hover:text-blue-300">Home</a>
-          <a href="/doctor/profile" className="hover:text-blue-300">My Profile</a>
-          <a href="#" className="hover:text-blue-300">Appointments</a>
+        
+        <nav className="flex flex-col gap-2 mt-4 text-sm font-medium">
+
+<nav className="flex flex-col gap-2 mt-4 text-sm font-medium">
+<a href="/" className="flex items-center gap-3 px-3 py-2 rounded-md text-white hover:bg-blue-800 transition"><FiHome className="text-lg" /><span>Home</span></a>
+<a href="/patient/profile" className="flex items-center gap-3 px-3 py-2 rounded-md text-white hover:bg-blue-800 transition"><FiUser className="text-lg" /><span>My Profile</span></a>
+<a href="/patient/appointments" className="flex items-center gap-3 px-3 py-2 rounded-md text-white hover:bg-blue-800 transition"><FiCalendar className="text-lg" /><span>Book Appointment</span></a>
+</nav>
+
         </nav>
+
+        
       </aside>
 
       {/* Main content */}
