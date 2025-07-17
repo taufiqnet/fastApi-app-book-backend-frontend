@@ -18,52 +18,74 @@ The Appointment Booking System is a web application designed for healthcare prov
 ### Backend (FastAPI)
 - **Framework**: FastAPI for high-performance, asynchronous API development.
 - **Structure**:
-  - **`/app`**: Main application directory.
-    - **`/api/v1`**: Versioned API endpoints.
-      - `/auth`: Handles registration, login, logout, and JWT token management.
-      - `/users`: User profile management (CRUD operations).
-      - `/doctors`: Doctor-specific operations (schedules, availability).
-      - `/appointments`: Appointment booking, status updates, and history.
-      - `/reports`: Monthly report generation.
-    - **`/models`**: SQLAlchemy ORM models for database tables.
-    - **`/schemas`**: Pydantic models for request/response validation.
-    - **`/services`**: Business logic (e.g., appointment scheduling, report generation).
-    - **`/utils`**: Utilities (e.g., JWT handling, password hashing, validation).
-    - **`/tasks`**: Background tasks (e.g., appointment reminders, report generation).
-    - **`/config`**: Configuration (database, environment variables).
+  - **`backend/`**: The main directory containing all backend-related code.
+  - **`app/`**: Houses the main application logic, including API endpoints under `api/`.
+  - **`celery_app/`**: Contains Celery-related configurations and tasks for asynchronous processing.
+  - **`core/`**: Includes core utilities and configurations like mail, scheduler, and security settings.
+  - **`db/`**: Manages database operations with `crud/` for CRUD operations and `models/` for database models.
+
+- **`schemas/`**: Contains schema definitions and related utilities.
+  - **`tasks/`**: Manages background tasks such as reminders and reports.
+  - **`utils/`**: Provides helper functions like email and validation logic.
+  - **`tests/`**: Includes test cases, e.g., `test_user_registration.py`.
+
+- **Configuration Files**:
+  - `.env`: Environment variables.
+  - `.gitignore`: Git ignore configuration.
+  - `commands.md`: Documentation for commands.
+  - `requirements.txt`: Project dependencies.
+  - `test.db`: Test database file.
+    
   - **Authentication**: JWT-based, with role-based access control (Admin, Doctor, Patient).
   - **Database**: MySQL with SQLAlchemy for ORM, Alembic for migrations.
   - **Background Tasks**: APScheduler for daily reminders and monthly reports.
   - **Logging**: Integrated logging for debugging and monitoring.
   - **Exception Handling**: Custom exception handlers for validation and server errors.
 
+This structure supports a robust backend application with API handling, task scheduling, database management, and testing capabilities.
+
 ### Frontend (React/Next.js)
 - **Framework**: Next.js for server-side rendering and static site generation.
 - **Structure**:
-  - **`/pages`**: Next.js pages for routing (e.g., `/login`, `/dashboard`, `/appointments`).
-  - **`/components`**: Reusable React components (e.g., `Navbar`, `AppointmentCard`).
-  - **`/hooks`**: Custom hooks for API calls and state management.
-  - **`/styles`**: Tailwind CSS for responsive styling.
-  - **`/lib`**: Utility functions (e.g., API client, JWT handling).
-  - **`/public`**: Static assets (e.g., images).
-- **Features**:
-  - Role-based dashboards (Admin, Doctor, Patient).
-  - Responsive design with Tailwind CSS.
-  - Client-side validation for forms (e.g., registration, appointment booking).
-  - Pagination and filtering for lists (e.g., doctors, appointments).
-  - Search functionality for doctors and patients.
+  - **`src/app/`**: Contains the main application pages and features.
+  - **`admin/profile/`**: Directory for admin profile-related components or pages.
+  - **`appointment/`**: Handles appointment-related functionality.
+  - **`auth/`**: Manages authentication logic.
+  - **`doctor/`**: Contains doctor-related pages or components.
+  - **`patient/`**: Handles patient-related functionality.
+  - **`utils/`**: Utility functions or helpers for the app.
+
+- **`src/components/`**: Reusable React components.
+  - **`AppointmentList.tsx`**: Component for displaying appointment lists.
+  - **`Layout.tsx`**: Main layout component for the application.
+  - **`Notification.tsx`**: Component for handling notifications.
+
+- **`src/context/`**: Directory for React context providers or related logic.
+
+- **Global Files**:
+  - **`globals.css`**: Global CSS styles for the application.
+  - **`layout.tsx`**: Defines the root layout for the Next.js app.
+  - **`page.module.css`**: Module-specific CSS for pages.
+  - **`page.tsx`**: Main page component or entry point.
+
+- **Configuration and Metadata**:
+  - **`favicon.ico`**: Application favicon.
+  - **`.gitignore`**: Git ignore configuration.
+  - **`eslint.config.mjs`**: ESLint configuration file.
+  - **`next-env.d.ts`**: TypeScript environment definitions for Next.js.
+  - **`next.config.ts`**: Next.js configuration file.
+  - **`package-lock.json`**: Lock file for package dependencies.
+  - **`package.json`**: Project dependencies and scripts.
+  - **`postcss.config.mjs`**: PostCSS configuration file.
 
 ### Database (MySQL)
 - **Schema**:
   - **Users**: Stores user details (full name, email, mobile, password, user type, address, profile image).
-  - **Doctors**: Stores doctor-specific details (license number, experience years, consultation fee, timeslots).
   - **Appointments**: Stores appointment details (doctor, patient, date, time, status, notes).
   - **Reports**: Stores generated monthly reports (total visits, appointments, earnings per doctor).
-  - **Divisions**, **Districts**, **Thanas**: Stores hierarchical address data for cascading dropdowns.
 - **Relationships**:
   - One-to-Many: Doctor to Appointments, Patient to Appointments.
   - Many-to-One: Appointments to Doctor, Appointments to Patient.
-  - Hierarchical: Divisions → Districts → Thanas.
 
 ### Workflow
 1. **User Registration**: Users register with validated inputs (email, mobile, password, etc.). Doctors provide additional details (license, timeslots).
@@ -81,7 +103,7 @@ The Appointment Booking System is a web application designed for healthcare prov
 - Python 3.9+
 - Node.js 18+
 - MySQL 8.0+
-- Docker (optional, for containerized deployment)
+- Docker
 - Git
 
 ### Backend Setup
@@ -99,7 +121,7 @@ The Appointment Booking System is a web application designed for healthcare prov
 3. Set up environment variables:
    - Copy `.env.example` to `.env` and configure:
      ```env
-     DATABASE_URL=mysql+mysqlconnector://user:password@localhost:3306/appointment_db
+     DATABASE_URL=mysql+mysqlconnector://user:password@localhost:3306/appointment_book
      JWT_SECRET=your_jwt_secret_key
      JWT_ALGORITHM=HS256
      ```
@@ -151,29 +173,29 @@ The Appointment Booking System is a web application designed for healthcare prov
   - Request Body:
     ```json
     {
-      "full_name": "John Doe",
-      "email": "john@example.com",
-      "mobile_number": "+8801234567890",
-      "password": "Password@123",
-      "user_type": "Patient",
-      "division_id": 1,
-      "district_id": 1,
-      "thana_id": 1,
-      "profile_image": "base64_encoded_image",
-      "license_number": "LIC123", // Required for Doctor
-      "experience_years": 5, // Required for Doctor
-      "consultation_fee": 500, // Required for Doctor
-      "available_timeslots": ["10:00-11:00", "14:00-15:00"] // Required for Doctor
+      "full_name": "Dr. Hasan",
+      "email": "drhasan@example.com",
+      "mobile_number": "+8801000000001",
+      "password": "Doctor@123",
+      "user_type": "doctor",
+      "division": "Dhaka",
+      "district": "Dhaka",
+      "thana": "Mirpur",
+      "license_number": "DOC-123",
+      "experience_years": 5,
+      "consultation_fee": 800,
+      "available_timeslots": "10:00-11:00"
     }
+
     ```
   - Response: `201 Created` with user details.
 - **POST /auth/login**: Authenticate and receive JWT token.
   - Request Body:
     ```json
-    {
-      "email": "john@example.com",
-      "password": "Password@123"
-    }
+      {
+        "email": "drhasan@example.com",
+        "password": "Doctor@123"
+      }
     ```
   - Response: `200 OK` with JWT token.
 - **POST /auth/logout**: Invalidate JWT token (client-side token removal).
@@ -183,20 +205,14 @@ The Appointment Booking System is a web application designed for healthcare prov
 - **PUT /users/me**: Update user profile.
 - **GET /users**: List all users (Admin only, with pagination and filters).
 
-### Doctors
-- **GET /doctors**: List doctors with filters (specialization, availability, location).
-- **PUT /doctors/{id}/schedule**: Update doctor availability (Doctor only).
-
 ### Appointments
 - **POST /appointments**: Book an appointment (Patient only).
   - Request Body:
     ```json
     {
       "doctor_id": 1,
-      "appointment_date": "2025-07-12",
-      "appointment_time": "10:00",
-      "notes": "Fever and cough",
-      "status": "Pending"
+      "appointment_time": "2025-07-18T10:00:00",
+      "notes": "Severe headache for 2 days"
     }
     ```
   - Response: `201 Created` with appointment details.
@@ -232,12 +248,6 @@ The Appointment Booking System is a web application designed for healthcare prov
    - `thana_id`: INT, Foreign Key
    - `profile_image`: TEXT (Base64 encoded)
    - `created_at`: DATETIME
-2. **Doctors**
-   - `user_id`: INT, Foreign Key (Users), Primary Key
-   - `license_number`: VARCHAR(50)
-   - `experience_years`: INT
-   - `consultation_fee`: DECIMAL(10,2)
-   - `available_timeslots`: JSON
 3. **Appointments**
    - `id`: INT, Primary Key
    - `doctor_id`: INT, Foreign Key (Users)
@@ -253,27 +263,13 @@ The Appointment Booking System is a web application designed for healthcare prov
    - `total_visits`: INT
    - `total_appointments`: INT
    - `earnings_per_doctor`: JSON
-5. **Divisions**
-   - `id`: INT, Primary Key
-   - `name`: VARCHAR(100)
-6. **Districts**
-   - `id`: INT, Primary Key
-   - `name`: VARCHAR(100)
-   - `division_id`: INT, Foreign Key
-7. **Thanas**
-   - `id`: INT, Primary Key
-   - `name`: VARCHAR(100)
-   - `district_id`: INT, Foreign Key
 
 ### Seed Data
 A `seed.py` script populates the database with:
-- 3 Divisions, 5 Districts, 10 Thanas.
 - 5 sample users (1 Admin, 2 Doctors, 2 Patients).
 - 10 sample appointments.
 
 ## Challenges and Assumptions
-- **Challenge**: Handling cascading dropdowns (Division → District → Thana).
-  - **Solution**: Preload address data in frontend and use API filtering for dynamic updates.
 - **Challenge**: Timeslot validation for appointments.
   - **Solution**: Validate against doctor’s available timeslots stored in JSON format.
 - **Assumption**: Business hours are 9:00 AM to 5:00 PM unless specified by doctor timeslots.
