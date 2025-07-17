@@ -10,10 +10,12 @@ interface Appointment {
   status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
   notes: string;
   appointment_time: string;
-  patient: {
+  patient_id: number;
+  doctor_id: number;
+  patient?: {
     full_name: string;
   };
-  doctor: {
+  doctor?: {
     full_name: string;
   };
 }
@@ -48,8 +50,23 @@ export default function AppointmentList() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        console.log("Appointments API Response:", apptRes.data);
-        setAppointments(apptRes.data);
+        const appointmentsWithDetails = await Promise.all(
+          apptRes.data.map(async (appt: Appointment) => {
+            const patientRes = await axios.get(`http://localhost:8000/api/v1/users/users/${appt.patient_id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const doctorRes = await axios.get(`http://localhost:8000/api/v1/users/users/${appt.doctor_id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            return {
+              ...appt,
+              patient: patientRes.data,
+              doctor: doctorRes.data,
+            };
+          })
+        );
+
+        setAppointments(appointmentsWithDetails);
       } catch (err) {
         console.error("Error loading appointments", err);
         setNotification({ message: "Error loading appointments.", type: "error" });
@@ -123,8 +140,8 @@ export default function AppointmentList() {
           {appointments.map((appt, idx) => (
             <tr key={appt.id} className="hover:bg-gray-50">
               <td className="p-2 border">{idx + 1}</td>
-              {user?.user_type !== "doctor" && <td className="p-2 border">{appt.patient.full_name}</td>}
-              {user?.user_type !== "patient" && <td className="p-2 border">{appt.doctor.full_name}</td>}
+              {user?.user_type !== "patient" && <td className="p-2 border">{appt.patient?.full_name}</td>}
+              {user?.user_type !== "doctor" && <td className="p-2 border">{appt.doctor?.full_name}</td>}
               <td className="p-2 border">
                 {new Date(appt.appointment_time).toLocaleString()}
               </td>
