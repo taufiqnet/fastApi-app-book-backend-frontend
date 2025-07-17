@@ -1,3 +1,4 @@
+
 "use client";
 
 import Layout from "@/components/Layout";
@@ -10,8 +11,8 @@ interface Appointment {
   status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
   notes: string;
   appointment_time: string;
-  patient: { full_name: string };
-  doctor: { full_name: string };
+  patient: { full_name: string; id: number };
+  doctor: { full_name: string; id: number };
 }
 
 interface User {
@@ -30,10 +31,13 @@ export default function AppointmentList() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [doctorSearch, setDoctorSearch] = useState<string>("");
+  const [patientSearch, setPatientSearch] = useState<string>("");
 
   // Pagination
   const rowsPerPage = 5;
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -51,13 +55,23 @@ export default function AppointmentList() {
       if (statusFilter) params.append("status", statusFilter);
       if (dateFrom) params.append("date_from", dateFrom);
       if (dateTo) params.append("date_to", dateTo);
+      if (userRes.data.user_type === "patient" && doctorSearch) {
+        params.append("doctor_name", doctorSearch);
+      }
+      if (userRes.data.user_type === "doctor" && patientSearch) {
+        params.append("patient_name", patientSearch);
+      }
+      
+      // Add pagination parameters
+      params.append("skip", String((currentPage - 1) * rowsPerPage));
+      params.append("limit", String(rowsPerPage));
 
       const apptRes = await axios.get(`http://localhost:8000/api/v1/appointment/appointments?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setAppointments(apptRes.data);
-      setCurrentPage(1); // Reset to page 1 after fetch
+      setAppointments(apptRes.data.items || apptRes.data);
+      setTotalCount(apptRes.data.totalCount || apptRes.data.length);
     } catch (err) {
       console.error("Error loading appointments", err);
       setNotification({ message: "Error loading appointments.", type: "error" });
@@ -68,7 +82,7 @@ export default function AppointmentList() {
 
   useEffect(() => {
     fetchAppointments();
-  }, [token]);
+  }, [token, currentPage]); // Add currentPage to dependencies
 
   const updateStatus = async (id: number, newStatus: Appointment["status"]) => {
     if (!token) return;
@@ -102,6 +116,7 @@ export default function AppointmentList() {
   };
 
   const handleFilter = () => {
+    setCurrentPage(1); // Reset to first page when filters change
     fetchAppointments();
   };
 
@@ -109,21 +124,17 @@ export default function AppointmentList() {
     setStatusFilter("");
     setDateFrom("");
     setDateTo("");
+    setDoctorSearch("");
+    setPatientSearch("");
+    setCurrentPage(1);
     fetchAppointments();
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(appointments.length / rowsPerPage);
-  const paginatedAppointments = appointments.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
-
   const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
+    setCurrentPage(page);
   };
+
+  const totalPages = Math.ceil(totalCount / rowsPerPage);
 
   return (
     <Layout>
@@ -139,45 +150,86 @@ export default function AppointmentList() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 mb-4 items-end">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border p-2 rounded"
-        >
-          <option value="">All Statuses</option>
-          <option value="Pending">Pending</option>
-          <option value="Confirmed">Confirmed</option>
-          <option value="Cancelled">Cancelled</option>
-          <option value="Completed">Completed</option>
-        </select>
+        {/* Status Filter */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Status</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border p-2 rounded w-full"
+          >
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
 
-        <input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-          className="border p-2 rounded"
-        />
+        {/* Date Range Filters */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">From Date</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="border p-2 rounded"
+          />
+        </div>
 
-        <input
-          type="date"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-          className="border p-2 rounded"
-        />
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">To Date</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="border p-2 rounded"
+          />
+        </div>
 
-        <button
-          onClick={handleFilter}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Filter
-        </button>
+        {/* Doctor Search (for patients) */}
+        {user?.user_type === "patient" && (
+          <div className="flex flex-col">
+            <label className="text-sm font-medium mb-1">Search Doctor</label>
+            <input
+              type="text"
+              value={doctorSearch}
+              onChange={(e) => setDoctorSearch(e.target.value)}
+              placeholder="Enter doctor name"
+              className="border p-2 rounded"
+            />
+          </div>
+        )}
 
-        <button
-          onClick={handleClearFilters}
-          className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-        >
-          Clear
-        </button>
+        {/* Patient Search (for doctors) */}
+        {user?.user_type === "doctor" && (
+          <div className="flex flex-col">
+            <label className="text-sm font-medium mb-1">Search Patient</label>
+            <input
+              type="text"
+              value={patientSearch}
+              onChange={(e) => setPatientSearch(e.target.value)}
+              placeholder="Enter patient name"
+              className="border p-2 rounded"
+            />
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={handleFilter}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 h-fit"
+          >
+            Filter
+          </button>
+          <button
+            onClick={handleClearFilters}
+            className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 h-fit"
+          >
+            Clear
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -197,7 +249,7 @@ export default function AppointmentList() {
               </tr>
             </thead>
             <tbody>
-              {paginatedAppointments.map((appt, idx) => (
+              {appointments.map((appt, idx) => (
                 <tr key={appt.id} className="hover:bg-gray-50">
                   <td className="p-2 border">{(currentPage - 1) * rowsPerPage + idx + 1}</td>
                   {user?.user_type !== "doctor" && (
@@ -240,24 +292,47 @@ export default function AppointmentList() {
           </table>
 
           {/* Pagination Controls */}
-          <div className="mt-4 flex justify-center items-center gap-4">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <span className="font-semibold">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-            >
-              Next
-            </button>
+          <div className="mt-4 flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              Showing {(currentPage - 1) * rowsPerPage + 1} to{' '}
+              {Math.min(currentPage * rowsPerPage, totalCount)} of {totalCount} appointments
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+              >
+                First
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              
+              <span className="px-3 py-1">
+                Page {currentPage} of {totalPages}
+              </span>
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Next
+              </button>
+              <button
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Last
+              </button>
+            </div>
           </div>
         </>
       )}
