@@ -3,13 +3,14 @@
 import Layout from "@/components/Layout";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import Notification from "./Notification";
 
 interface Appointment {
   id: number;
-  patient_full_name: string;
-  doctor_full_name: string;
+  full_name: string;
   status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
   notes: string;
+  appointment_time: string;
 }
 
 interface User {
@@ -22,6 +23,8 @@ export default function AppointmentList() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingIds, setUpdatingIds] = useState<number[]>([]); // track which appts updating
+  const [notification, setNotification] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -43,6 +46,7 @@ export default function AppointmentList() {
         setAppointments(apptRes.data);
       } catch (err) {
         console.error("Error loading appointments", err);
+        setNotification({ message: "Error loading appointments.", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -68,14 +72,18 @@ export default function AppointmentList() {
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setAppointments((prev) =>
-        prev.map((appt) =>
-          appt.id === id ? { ...appt, status: res.data.status } : appt
-        )
-      );
+
+      if (res.status === 200 && res.data) {
+        setAppointments((prev) =>
+          prev.map((appt) => (appt.id === id ? res.data : appt))
+        );
+        setNotification({ message: "Appointment status updated successfully!", type: "success" });
+      } else {
+        throw new Error("Failed to update appointment status");
+      }
     } catch (err) {
       console.error("Failed to update status", err);
-      alert("Could not update appointment status");
+      setNotification({ message: "Doctor appointment not updated", type: "error" });
     } finally {
       setUpdatingIds((prev) => prev.filter((apptId) => apptId !== id));
     }
@@ -85,13 +93,20 @@ export default function AppointmentList() {
 
   return (
     <Layout>
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
       <h2 className="text-2xl font-bold mb-4">Appointments</h2>
       <table className="w-full border">
         <thead className="bg-blue-100 text-left">
           <tr>
             <th className="p-2 border">#</th>
-            {user?.user_type !== "patient" && <th className="p-2 border">Patient</th>}
-            {user?.user_type !== "doctor" && <th className="p-2 border">Doctor</th>}
+            {user?.user_type === "doctor" && <th className="p-2 border">Patient</th>}
+            {user?.user_type === "patient" && <th className="p-2 border">Doctor</th>}
             <th className="p-2 border">Time</th>
             <th className="p-2 border">Notes</th>
             <th className="p-2 border">Status</th>
@@ -102,8 +117,7 @@ export default function AppointmentList() {
           {appointments.map((appt, idx) => (
             <tr key={appt.id} className="hover:bg-gray-50">
               <td className="p-2 border">{idx + 1}</td>
-              {user?.user_type !== "patient" && <td className="p-2 border">{appt.patient_full_name}</td>}
-              {user?.user_type !== "doctor" && <td className="p-2 border">{appt.doctor_full_name}</td>}
+              {user?.user_type !== "admin" && <td className="p-2 border">{appt.full_name}</td>}
               <td className="p-2 border">
                 {new Date(appt.appointment_time).toLocaleString()}
               </td>
