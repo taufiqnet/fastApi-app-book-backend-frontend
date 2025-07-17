@@ -7,10 +7,15 @@ import Notification from "./Notification";
 
 interface Appointment {
   id: number;
-  full_name: string;
   status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
   notes: string;
   appointment_time: string;
+  patient: {
+    full_name: string;
+  };
+  doctor: {
+    full_name: string;
+  };
 }
 
 interface User {
@@ -43,6 +48,7 @@ export default function AppointmentList() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        console.log("Appointments API Response:", apptRes.data);
         setAppointments(apptRes.data);
       } catch (err) {
         console.error("Error loading appointments", err);
@@ -105,8 +111,8 @@ export default function AppointmentList() {
         <thead className="bg-blue-100 text-left">
           <tr>
             <th className="p-2 border">#</th>
-            {user?.user_type === "doctor" && <th className="p-2 border">Patient</th>}
-            {user?.user_type === "patient" && <th className="p-2 border">Doctor</th>}
+            {user?.user_type !== "patient" && <th className="p-2 border">Patient</th>}
+            {user?.user_type !== "doctor" && <th className="p-2 border">Doctor</th>}
             <th className="p-2 border">Time</th>
             <th className="p-2 border">Notes</th>
             <th className="p-2 border">Status</th>
@@ -117,7 +123,8 @@ export default function AppointmentList() {
           {appointments.map((appt, idx) => (
             <tr key={appt.id} className="hover:bg-gray-50">
               <td className="p-2 border">{idx + 1}</td>
-              {user?.user_type !== "admin" && <td className="p-2 border">{appt.full_name}</td>}
+              {user?.user_type !== "doctor" && <td className="p-2 border">{appt.patient.full_name}</td>}
+              {user?.user_type !== "patient" && <td className="p-2 border">{appt.doctor.full_name}</td>}
               <td className="p-2 border">
                 {new Date(appt.appointment_time).toLocaleString()}
               </td>
