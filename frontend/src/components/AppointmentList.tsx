@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 
 interface Appointment {
   id: number;
-  full_name: string;
+  patient_full_name: string;
+  doctor_full_name: string;
   status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
   notes: string;
 }
@@ -101,8 +102,8 @@ export default function AppointmentList() {
           {appointments.map((appt, idx) => (
             <tr key={appt.id} className="hover:bg-gray-50">
               <td className="p-2 border">{idx + 1}</td>
-              {user?.user_type !== "patient" && <td className="p-2 border">{appt.full_name}</td>}
-              {user?.user_type !== "doctor" && <td className="p-2 border">{appt.full_name}</td>}
+              {user?.user_type !== "patient" && <td className="p-2 border">{appt.patient_full_name}</td>}
+              {user?.user_type !== "doctor" && <td className="p-2 border">{appt.doctor_full_name}</td>}
               <td className="p-2 border">
                 {new Date(appt.appointment_time).toLocaleString()}
               </td>
