@@ -82,7 +82,7 @@ export default function AppointmentList() {
 
   useEffect(() => {
     fetchAppointments();
-  }, [token, currentPage]); // Add currentPage to dependencies
+  }, [token, currentPage, statusFilter, dateFrom, dateTo, doctorSearch, patientSearch]);
 
   const updateStatus = async (id: number, newStatus: Appointment["status"]) => {
     if (!token) return;
@@ -117,7 +117,6 @@ export default function AppointmentList() {
 
   const handleFilter = () => {
     setCurrentPage(1); // Reset to first page when filters change
-    fetchAppointments();
   };
 
   const handleClearFilters = () => {
@@ -127,7 +126,6 @@ export default function AppointmentList() {
     setDoctorSearch("");
     setPatientSearch("");
     setCurrentPage(1);
-    fetchAppointments();
   };
 
   const handlePageChange = (page: number) => {
