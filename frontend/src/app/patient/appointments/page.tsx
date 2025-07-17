@@ -1,5 +1,6 @@
 "use client";
 
+import Layout from "@/components/Layout";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -115,6 +116,7 @@ export default function BookAppointment() {
   };
 
   return (
+    <Layout>
     <div className="max-w-xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6 text-center">Book Appointment</h1>
 
@@ -198,5 +200,6 @@ export default function BookAppointment() {
         </button>
       </form>
     </div>
+    </Layout>
   );
 }
