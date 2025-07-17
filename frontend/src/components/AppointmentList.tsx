@@ -1,4 +1,3 @@
-
 "use client";
 
 import Layout from "@/components/Layout";
@@ -31,13 +30,12 @@ export default function AppointmentList() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
-  const [doctorSearch, setDoctorSearch] = useState<string>("");
-  const [patientSearch, setPatientSearch] = useState<string>("");
+  const [doctorSearch, setDoctorSearch] = useState<string>(""); // For patients searching doctors
+  const [patientSearch, setPatientSearch] = useState<string>(""); // For doctors searching patients
 
   // Pagination
-  const rowsPerPage = 5;
+  const rowsPerPage = 8;
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalCount, setTotalCount] = useState<number>(0);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -55,23 +53,21 @@ export default function AppointmentList() {
       if (statusFilter) params.append("status", statusFilter);
       if (dateFrom) params.append("date_from", dateFrom);
       if (dateTo) params.append("date_to", dateTo);
+      
+      // Add name search parameters based on user type
       if (userRes.data.user_type === "patient" && doctorSearch) {
         params.append("doctor_name", doctorSearch);
       }
       if (userRes.data.user_type === "doctor" && patientSearch) {
         params.append("patient_name", patientSearch);
       }
-      
-      // Add pagination parameters
-      params.append("skip", String((currentPage - 1) * rowsPerPage));
-      params.append("limit", String(rowsPerPage));
 
       const apptRes = await axios.get(`http://localhost:8000/api/v1/appointment/appointments?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setAppointments(apptRes.data.items || apptRes.data);
-      setTotalCount(apptRes.data.totalCount || apptRes.data.length);
+      setAppointments(apptRes.data);
+      setCurrentPage(1); // Reset to page 1 after fetch
     } catch (err) {
       console.error("Error loading appointments", err);
       setNotification({ message: "Error loading appointments.", type: "error" });
@@ -82,41 +78,12 @@ export default function AppointmentList() {
 
   useEffect(() => {
     fetchAppointments();
-  }, [token, currentPage, statusFilter, dateFrom, dateTo, doctorSearch, patientSearch]);
+  }, [token]);
 
-  const updateStatus = async (id: number, newStatus: Appointment["status"]) => {
-    if (!token) return;
-    if (updatingIds.includes(id)) return;
-
-    const appt = appointments.find((a) => a.id === id);
-    if (!appt || appt.status === "Cancelled" || appt.status === "Completed") return;
-
-    try {
-      setUpdatingIds((prev) => [...prev, id]);
-      const res = await axios.patch(
-        `http://localhost:8000/api/v1/appointment/appointments/${id}/status`,
-        { status: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (res.status === 200 && res.data) {
-        setAppointments((prev) =>
-          prev.map((appt) => (appt.id === id ? res.data : appt))
-        );
-        setNotification({ message: "Appointment status updated successfully!", type: "success" });
-      } else {
-        throw new Error("Failed to update appointment status");
-      }
-    } catch (err) {
-      console.error("Failed to update status", err);
-      setNotification({ message: "Doctor appointment not updated", type: "error" });
-    } finally {
-      setUpdatingIds((prev) => prev.filter((apptId) => apptId !== id));
-    }
-  };
+  // ... (keep your existing updateStatus function)
 
   const handleFilter = () => {
-    setCurrentPage(1); // Reset to first page when filters change
+    fetchAppointments();
   };
 
   const handleClearFilters = () => {
@@ -125,14 +92,15 @@ export default function AppointmentList() {
     setDateTo("");
     setDoctorSearch("");
     setPatientSearch("");
-    setCurrentPage(1);
+    fetchAppointments();
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const totalPages = Math.ceil(totalCount / rowsPerPage);
+  // Pagination logic
+  const totalPages = Math.ceil(appointments.length / rowsPerPage);
+  const paginatedAppointments = appointments.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
   return (
     <Layout>
@@ -247,7 +215,7 @@ export default function AppointmentList() {
               </tr>
             </thead>
             <tbody>
-              {appointments.map((appt, idx) => (
+              {paginatedAppointments.map((appt, idx) => (
                 <tr key={appt.id} className="hover:bg-gray-50">
                   <td className="p-2 border">{(currentPage - 1) * rowsPerPage + idx + 1}</td>
                   {user?.user_type !== "doctor" && (
@@ -290,47 +258,24 @@ export default function AppointmentList() {
           </table>
 
           {/* Pagination Controls */}
-          <div className="mt-4 flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              Showing {(currentPage - 1) * rowsPerPage + 1} to{' '}
-              {Math.min(currentPage * rowsPerPage, totalCount)} of {totalCount} appointments
-            </div>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={() => handlePageChange(1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-              >
-                First
-              </button>
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              
-              <span className="px-3 py-1">
-                Page {currentPage} of {totalPages}
-              </span>
-              
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-              >
-                Next
-              </button>
-              <button
-                onClick={() => handlePageChange(totalPages)}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-              >
-                Last
-              </button>
-            </div>
+          <div className="mt-4 flex justify-center items-center gap-4">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <span className="font-semibold">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 rounded border bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
         </>
       )}
